@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 from flask import Flask, render_template, request, jsonify
 import os
-import psycopg2
+import psycopg
 from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
 
-# ------------------ Database Connection ------------------ .   .  9. 
+# ------------------ Database Connection ------------------
 def connect_db():
-    return psycopg2.connect(
+    return psycopg.connect(
         host=os.getenv("DB_HOST"),
         port=os.getenv("DB_PORT"),
         user=os.getenv("DB_USER"),
@@ -17,7 +17,6 @@ def connect_db():
         dbname=os.getenv("DB_NAME"),
         sslmode="require"
     )
-
 
 # ------------------ Generate Unique ID ------------------
 def generate_unique_id(cursor):
