@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
+import os
 print("MAIL_USERNAME:", os.getenv("MAIL_USERNAME"))
 print("MAIL_PASSWORD:", os.getenv("MAIL_PASSWORD"))
 
 from flask import Flask, render_template, request, jsonify, url_for
-import os
 import psycopg
 from flask_cors import CORS
 from flask_mail import Mail, Message
