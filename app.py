@@ -49,7 +49,6 @@ def home():
     return render_template("index.html")
 
 # ---------- Register Participant ----------
-# ---------- Register Participant ----------
 @app.route("/register", methods=["POST"])
 def register():
     conn = None
@@ -65,32 +64,46 @@ def register():
         if not (name and email and phone and year and college):
             return jsonify({"status": "error", "message": "All fields required"}), 400
 
-        # Extra check for valid email format
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-            return jsonify({"status": "error", "message": "Invalid email format!"}), 400
-
         # Generate verification token
         token = secrets.token_urlsafe(16)
         verify_link = url_for('verify_email', token=token, _external=True)
 
-        # Prepare email message
+        # --- Email body with clickable button ---
+        html_body = f"""
+        <html>
+          <body style="font-family: Arial, sans-serif; background:#f9f9f9; padding:20px;">
+            <div style="max-width:600px; margin:auto; background:white; padding:20px; border-radius:8px; text-align:center;">
+              <h2>Hi {name},</h2>
+              <p>Thanks for registering for our Hackathon 🎉</p>
+              <p>Please verify your email by clicking the button below:</p>
+              <a href="{verify_link}" style="display:inline-block; margin-top:20px; padding:12px 20px; background:#4CAF50; color:white; text-decoration:none; border-radius:6px;">
+                Verify Email
+              </a>
+              <p style="margin-top:30px; font-size:12px; color:#666;">If the button doesn’t work, copy & paste this link:<br>{verify_link}</p>
+            </div>
+          </body>
+        </html>
+        """
+
         msg = Message(
-            subject="Verify Your Email",
+            subject="Verify Your Email - Hackathon",
             sender=app.config['MAIL_USERNAME'],
             recipients=[email]
         )
-        msg.body = f"Hi {name},\n\nPlease verify your email by clicking this link:\n{verify_link}\n\nRegards,\nHackathon Team"
+        msg.html = html_body   # send HTML body instead of plain text
 
-        # ------------------ Try Sending Email First ------------------
         try:
+            print("📧 Sending verification mail to:", email)   # 👈 Debug log
             mail.send(msg)
+            print("✅ Mail sent successfully")                 # 👈 Debug log
         except Exception as mail_error:
+            print("❌ Mail send failed:", mail_error)           # 👈 Debug log
             return jsonify({
                 "status": "error",
-                "message": f"Failed to send mail. Please check your email address. ({mail_error})"
+                "message": f"Invalid email or failed to send mail: {mail_error}"
             }), 400
 
-        # ------------------ If Email Sent → Save to DB ------------------
+        # If email sent successfully → Save in DB
         conn = connect_db()
         cursor = conn.cursor()
 
@@ -127,6 +140,7 @@ def register():
             cursor.close()
         if conn:
             conn.close()
+
 
 # ---------- Email Verification Route ----------
 @app.route('/verify/<token>')
