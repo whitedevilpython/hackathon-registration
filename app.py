@@ -1,11 +1,21 @@
 # -*- coding: utf-8 -*-
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, url_for
 import os
 import psycopg
 from flask_cors import CORS
+from flask_mail import Mail, Message
+import secrets
 
 app = Flask(__name__)
 CORS(app)
+
+# ------------------ Flask-Mail Configuration ------------------
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['Prateekporwal096@gmail.com'] = 'your_email@gmail.com'       # replace with your email
+app.config['alqugyzocnfielaq'] = 'your_app_password'          # use App Password if Gmail
+mail = Mail(app)
 
 # ------------------ Database Connection ------------------
 def connect_db():
@@ -22,14 +32,12 @@ def connect_db():
 def generate_unique_id(cursor):
     cursor.execute("SELECT unique_id FROM participants ORDER BY id DESC LIMIT 1")
     last_id = cursor.fetchone()
-
     if last_id and last_id[0]:
         num = int(last_id[0].replace("HACK", ""))
         new_num = num + 1
     else:
         new_num = 1
-
-    return "HACK{0:04d}".format(new_num)   # Example: HACK0001
+    return "HACK{0:04d}".format(new_num)
 
 # ------------------ Routes ------------------
 @app.route("/")
@@ -64,25 +72,65 @@ def register():
         # Generate new unique ID
         unique_id = generate_unique_id(cursor)
 
+        # Generate verification token
+        token = secrets.token_urlsafe(16)
+
         # Insert new participant
         cursor.execute(
             """
-            INSERT INTO participants (unique_id, name, email, phone, year, college)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO participants (unique_id, name, email, phone, year, college, is_verified, verification_token)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """,
-            (unique_id, name, email, phone, year, college)
+            (unique_id, name, email, phone, year, college, False, token)
         )
         conn.commit()
 
+        # Send verification email
+        verify_link = url_for('verify_email', token=token, _external=True)
+        msg = Message(
+            subject="Verify Your Email",
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[email]
+        )
+        msg.body = f"Hi {name},\nPlease verify your email by clicking this link:\n{verify_link}"
+        mail.send(msg)
+
         return jsonify({
             "status": "success",
-            "message": "Registration successful!",
+            "message": "Registration successful! Please check your email to verify.",
             "unique_id": unique_id
         })
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+# ---------- Email Verification Route ----------
+@app.route('/verify/<token>')
+def verify_email(token):
+    conn = None
+    cursor = None
+    try:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM participants WHERE verification_token = %s", (token,))
+        user = cursor.fetchone()
+        if user:
+            cursor.execute(
+                "UPDATE participants SET is_verified = TRUE, verification_token = NULL WHERE id = %s",
+                (user[0],)
+            )
+            conn.commit()
+            return "Email verified! You can now access your registration."
+        else:
+            return "Invalid or expired verification link."
+    except Exception as e:
+        return f"Error: {e}", 500
     finally:
         if cursor:
             cursor.close()
@@ -97,7 +145,7 @@ def admin():
     try:
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT id, unique_id, name, email, phone, year, college FROM participants")
+        cursor.execute("SELECT id, unique_id, name, email, phone, year, college, is_verified FROM participants")
         participants = cursor.fetchall()
         return render_template("admin.html", participants=participants)
     except Exception as e:
@@ -116,7 +164,6 @@ def delete():
     try:
         data = request.get_json()
         unique_id = data.get("unique_id")
-
         if not unique_id:
             return jsonify({"status": "error", "message": "Unique ID required"}), 400
 
