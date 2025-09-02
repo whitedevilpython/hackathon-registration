@@ -1,22 +1,23 @@
 # -*- coding: utf-8 -*-
 from flask import Flask, render_template, request, jsonify
 import os
-import psycopg
+import psycopg2
 from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
 
-# ------------------ Database Connection ------------------
+# ------------------ Database Connection ------------------ .   .  9. 
 def connect_db():
-    return psycopg.connect(
+    return psycopg2.connect(
         host=os.getenv("dpg-d2r8med6ubrc73ec2t9g-a"),
         port=os.getenv("5432"),
         user=os.getenv("hackathon_user"),
         password=os.getenv("9Qhov8zxMDbXzvTLlm3FqjHf38Nqnnws"),
         dbname=os.getenv("hackathon_db_zlb6"),
-        sslmode="require"   # 🔑 Render Postgres requires SSL
+        sslmode="require"
     )
+
 
 # ------------------ Generate Unique ID ------------------
 def generate_unique_id(cursor):
