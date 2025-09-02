@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from flask import Flask, render_template, request, jsonify
-import psycopg2
+import os
+import psycopg
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -8,19 +9,17 @@ CORS(app)
 
 # ------------------ Database Connection ------------------
 def connect_db():
-    return psycopg2.connect(
-        host="dpg-d2r8med6ubrc73ec2t9g-a",       # e.g., "dpg-xyz.us-west-1.render.com"
-        port="5432",                # default PostgreSQL port
-        user="hackathon_user",        # PostgreSQL username
-        password="9Qhov8zxMDbXzvTLlm3FqjHf38Nqnnws",# PostgreSQL password
-        database="hackathon_db_zlb6"     # yourhackathon_db_zlb6 database name
+    return psycopg.connect(
+        host=os.getenv("dpg-d2r8med6ubrc73ec2t9g-a"),
+        port=os.getenv("5432"),
+        user=os.getenv("hackathon_user"),
+        password=os.getenv("9Qhov8zxMDbXzvTLlm3FqjHf38Nqnnws"),
+        dbname=os.getenv("hackathon_db_zlb6"),
+        sslmode="require"   # 🔑 Render Postgres requires SSL
     )
 
 # ------------------ Generate Unique ID ------------------
-def generate_unique_id():
-    conn = connect_db()
-    cursor = conn.cursor()
-
+def generate_unique_id(cursor):
     cursor.execute("SELECT unique_id FROM participants ORDER BY id DESC LIMIT 1")
     last_id = cursor.fetchone()
 
@@ -29,9 +28,6 @@ def generate_unique_id():
         new_num = num + 1
     else:
         new_num = 1
-
-    cursor.close()
-    conn.close()
 
     return "HACK{0:04d}".format(new_num)   # Example: HACK0001
 
@@ -43,6 +39,8 @@ def home():
 # ---------- Register Participant ----------
 @app.route("/register", methods=["POST"])
 def register():
+    conn = None
+    cursor = None
     try:
         data = request.get_json()
         name = data.get("name")
@@ -61,11 +59,10 @@ def register():
         cursor.execute("SELECT id FROM participants WHERE email = %s", (email,))
         existing = cursor.fetchone()
         if existing:
-            conn.close()
             return jsonify({"status": "error", "message": "Email already registered!"}), 400
 
         # Generate new unique ID
-        unique_id = generate_unique_id()
+        unique_id = generate_unique_id(cursor)
 
         # Insert new participant
         cursor.execute(
@@ -76,7 +73,6 @@ def register():
             (unique_id, name, email, phone, year, college)
         )
         conn.commit()
-        conn.close()
 
         return jsonify({
             "status": "success",
@@ -87,19 +83,36 @@ def register():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
 # ---------- Admin Page ----------
 @app.route("/admin")
 def admin():
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, unique_id, name, email, phone, year, college FROM participants")
-    participants = cursor.fetchall()
-    conn.close()
-    return render_template("admin.html", participants=participants)
+    conn = None
+    cursor = None
+    try:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, unique_id, name, email, phone, year, college FROM participants")
+        participants = cursor.fetchall()
+        return render_template("admin.html", participants=participants)
+    except Exception as e:
+        return f"Error: {e}", 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 # ---------- Delete Participant ----------
 @app.route("/delete", methods=["POST"])
 def delete():
+    conn = None
+    cursor = None
     try:
         data = request.get_json()
         unique_id = data.get("unique_id")
@@ -112,7 +125,6 @@ def delete():
         cursor.execute("DELETE FROM participants WHERE unique_id = %s", (unique_id,))
         conn.commit()
         deleted = cursor.rowcount
-        conn.close()
 
         if deleted > 0:
             return jsonify({"status": "success", "message": f"Participant {unique_id} deleted"})
@@ -121,6 +133,31 @@ def delete():
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+# ---------- Test DB Connection ----------
+@app.route("/test-db")
+def test_db():
+    conn = None
+    cursor = None
+    try:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        result = cursor.fetchone()
+        return {"status": "ok", "message": f"DB works, result={result}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}, 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 # ------------------ Run ------------------
 if __name__ == "__main__":
