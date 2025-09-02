@@ -49,6 +49,7 @@ def home():
     return render_template("index.html")
 
 # ---------- Register Participant ----------
+# ---------- Register Participant ----------
 @app.route("/register", methods=["POST"])
 def register():
     conn = None
@@ -64,27 +65,32 @@ def register():
         if not (name and email and phone and year and college):
             return jsonify({"status": "error", "message": "All fields required"}), 400
 
-        # Generate verification token first
-        token = secrets.token_urlsafe(16)
+        # Extra check for valid email format
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            return jsonify({"status": "error", "message": "Invalid email format!"}), 400
 
-        # Try sending verification email BEFORE saving to DB
+        # Generate verification token
+        token = secrets.token_urlsafe(16)
         verify_link = url_for('verify_email', token=token, _external=True)
+
+        # Prepare email message
         msg = Message(
             subject="Verify Your Email",
             sender=app.config['MAIL_USERNAME'],
             recipients=[email]
         )
-        msg.body = f"Hi {name},\nPlease verify your email by clicking this link:\n{verify_link}"
+        msg.body = f"Hi {name},\n\nPlease verify your email by clicking this link:\n{verify_link}\n\nRegards,\nHackathon Team"
 
+        # ------------------ Try Sending Email First ------------------
         try:
             mail.send(msg)
         except Exception as mail_error:
             return jsonify({
                 "status": "error",
-                "message": f"Invalid email or failed to send mail: {mail_error}"
+                "message": f"Failed to send mail. Please check your email address. ({mail_error})"
             }), 400
 
-        # If email sent successfully → Save in DB
+        # ------------------ If Email Sent → Save to DB ------------------
         conn = connect_db()
         cursor = conn.cursor()
 
