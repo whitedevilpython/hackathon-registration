@@ -7,6 +7,7 @@ import psycopg
 from flask_cors import CORS
 from flask_mail import Mail, Message
 import secrets
+import re
 
 app = Flask(__name__)
 CORS(app)
@@ -63,10 +64,31 @@ def register():
         if not (name and email and phone and year and college):
             return jsonify({"status": "error", "message": "All fields required"}), 400
 
+        # Generate verification token first
+        token = secrets.token_urlsafe(16)
+
+        # Try sending verification email BEFORE saving to DB
+        verify_link = url_for('verify_email', token=token, _external=True)
+        msg = Message(
+            subject="Verify Your Email",
+            sender=app.config['MAIL_USERNAME'],
+            recipients=[email]
+        )
+        msg.body = f"Hi {name},\nPlease verify your email by clicking this link:\n{verify_link}"
+
+        try:
+            mail.send(msg)
+        except Exception as mail_error:
+            return jsonify({
+                "status": "error",
+                "message": f"Invalid email or failed to send mail: {mail_error}"
+            }), 400
+
+        # If email sent successfully → Save in DB
         conn = connect_db()
         cursor = conn.cursor()
 
-        # ✅ Check if email already exists
+        # Check if email already exists
         cursor.execute("SELECT id FROM participants WHERE email = %s", (email,))
         existing = cursor.fetchone()
         if existing:
@@ -74,9 +96,6 @@ def register():
 
         # Generate new unique ID
         unique_id = generate_unique_id(cursor)
-
-        # Generate verification token
-        token = secrets.token_urlsafe(16)
 
         # Insert new participant
         cursor.execute(
@@ -87,16 +106,6 @@ def register():
             (unique_id, name, email, phone, year, college, False, token)
         )
         conn.commit()
-
-        # Send verification email
-        verify_link = url_for('verify_email', token=token, _external=True)
-        msg = Message(
-            subject="Verify Your Email",
-            sender=app.config['MAIL_USERNAME'],
-            recipients=[email]
-        )
-        msg.body = f"Hi {name},\nPlease verify your email by clicking this link:\n{verify_link}"
-        mail.send(msg)
 
         return jsonify({
             "status": "success",
@@ -129,9 +138,9 @@ def verify_email(token):
                 (user[0],)
             )
             conn.commit()
-            return "Email verified! You can now access your registration."
+            return "✅ Email verified! You can now access your registration."
         else:
-            return "Invalid or expired verification link."
+            return "❌ Invalid or expired verification link."
     except Exception as e:
         return f"Error: {e}", 500
     finally:
