@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CODING SAFARI Registration</title>
+  <style>
+    body {
+      background: black;
+      color: #00ff00;
+      font-family: Consolas, monospace;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .container {
+      background: rgba(0, 0, 0, 0.85);
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 20px #00ff00;
+      width: 340px;
+    }
+    h2 { text-align: center; }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin: 8px 0;
+      border: none;
+      border-radius: 5px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #00ff00;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover { background: #00cc00; }
+    .error { color: red; font-size: 12px; }
+
+    /* Success card styles */
+    .success-card {
+      text-align: center;
+      padding: 20px;
+    }
+    .success-card h2 {
+      color: #00ff00;
+    }
+    .success-card p {
+      margin: 8px 0;
+    }
+    .unique-id {
+      font-size: 18px;
+      font-weight: bold;
+      color: #00ffff;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="formContainer">
+    <h2>🚀 CODINGSAFARI Registration</h2>
+    <input type="text" id="name" placeholder="Full Name" required>
+    <span class="error" id="nameError"></span>
+
+    <input type="email" id="email" placeholder="Email" required>
+    <span class="error" id="emailError"></span>
+
+    <input type="text" id="phone" placeholder="Phone (10 digits)" required>
+    <span class="error" id="phoneError"></span>
+
+    <select id="year" required>
+      <option value="">Select Year</option>
+      <option value="1st Year">1st Year</option>
+      <option value="2nd Year">2nd Year</option>
+      <option value="3rd Year">3rd Year</option>
+  
+    </select>
+    <span class="error" id="yearError"></span>
+
+    <input type="text" id="college" placeholder="College" required>
+    <span class="error" id="collegeError"></span>
+
+    <button onclick="register()">Register</button>
+  </div>
+
+  <script>
+    function validateForm(data) {
+      let isValid = true;
+
+      // Reset errors
+      document.querySelectorAll(".error").forEach(e => e.innerText = "");
+
+      // Name check
+      if (!data.name.trim()) {
+        document.getElementById("nameError").innerText = "Name is required";
+        isValid = false;
+      }
+
+      // Email check
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (!emailPattern.test(data.email)) {
+        document.getElementById("emailError").innerText = "Invalid email format";
+        isValid = false;
+      }
+
+      // Phone check
+      const phonePattern = /^[0-9]{10}$/;
+      if (!phonePattern.test(data.phone)) {
+        document.getElementById("phoneError").innerText = "Phone must be 10 digits";
+        isValid = false;
+      }
+
+      // Year check
+      if (!data.year) {
+        document.getElementById("yearError").innerText = "Please select year";
+        isValid = false;
+      }
+
+      // College check
+      if (!data.college.trim()) {
+        document.getElementById("collegeError").innerText = "College is required";
+        isValid = false;
+      }
+
+      return isValid;
+    }
+
+    function register() {
+      const data = {
+        name: document.getElementById("name").value,
+        email: document.getElementById("email").value,
+        phone: document.getElementById("phone").value,
+        year: document.getElementById("year").value,
+        college: document.getElementById("college").value
+      };
+
+      // Validate first
+      if (!validateForm(data)) {
+        return;
+      }
+
+      fetch("/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      })
+      .then(res => res.json())
+      .then(res => {
+        if (res.message.includes("success")) {
+          // Replace form with success card
+          document.getElementById("formContainer").innerHTML = `
+            <div class="success-card">
+              <h2>🎉 Registration Successful!</h2>
+              <p class="unique-id">Your ID: ${res.unique_id}</p>
+              <p><strong>Name:</strong> ${data.name}</p>
+              <p><strong>Email:</strong> ${data.email}</p>
+              <p><strong>Phone:</strong> ${data.phone}</p>
+              <p><strong>Year:</strong> ${data.year}</p>
+              <p><strong>College:</strong> ${data.college}</p>
+            </div>
+          `;
+        } else {
+          alert(res.message);
+        }
+      })
+      .catch(err => alert("Error: " + err));
+    }
+  </script>
+</body>
+</html>

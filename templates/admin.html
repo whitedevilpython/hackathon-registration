@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hackathon Admin Panel</title>
+  <style>
+    body {
+      background: black;
+      color: #00ff00;
+      font-family: Consolas, monospace;
+      padding: 20px;
+    }
+    input[type="text"] {
+      padding: 8px;
+      width: 300px;
+      margin-bottom: 15px;
+      border: 1px solid #00ff00;
+      border-radius: 4px;
+      background: black;
+      color: #00ff00;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid #00ff00;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background: #00ff00;
+      color: black;
+    }
+    button {
+      background: red;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    button:hover {
+      background: darkred;
+    }
+    .not-found {
+      text-align: center;
+      color: red;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h2>Hackathon Admin Panel</h2>
+
+  <!-- 🔍 Search bar -->
+  <input type="text" id="searchBox" placeholder="Search by Name, Email, or Unique ID..." onkeyup="filterTable()">
+
+  <table id="participantsTable">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Unique ID</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Year</th>
+        <th>College</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in participants %}
+      <tr id="row-{{ p[1] }}">
+        <td>{{ p[0] }}</td>
+        <td>{{ p[1] }}</td>
+        <td>{{ p[2] }}</td>
+        <td>{{ p[3] }}</td>
+        <td>{{ p[4] }}</td>
+        <td>{{ p[5] }}</td>
+        <td>{{ p[6] }}</td>
+        <td><button onclick="deleteParticipant('{{ p[1] }}')">Delete</button></td>
+      </tr>
+      {% endfor %}
+      <!-- 👇 This row will show when nothing matches -->
+      <tr id="noResults" style="display:none;">
+        <td colspan="8" class="not-found">⚠️ Participant not found</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <script>
+    // 🔍 Search filter
+    function filterTable() {
+      let input = document.getElementById("searchBox").value.toLowerCase();
+      let rows = document.querySelectorAll("#participantsTable tbody tr");
+      let noResults = document.getElementById("noResults");
+      let found = false;
+
+      rows.forEach(row => {
+        if (row.id === "noResults") return; // skip "not found" row
+        let text = row.innerText.toLowerCase();
+        if (text.includes(input)) {
+          row.style.display = "";
+          found = true;
+        } else {
+          row.style.display = "none";
+        }
+      });
+
+      // Show "Participant not found" if nothing matches
+      noResults.style.display = found ? "none" : "";
+    }
+
+    // ❌ Delete participant
+    function deleteParticipant(uniqueId) {
+      if (!confirm("Are you sure you want to delete " + uniqueId + "?")) {
+        return;
+      }
+
+      fetch("/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ unique_id: uniqueId })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === "success") {
+          alert(data.message);
+          document.getElementById("row-" + uniqueId).remove();
+          filterTable(); // recheck after deletion
+        } else {
+          alert("Error: " + data.message);
+        }
+      })
+      .catch(err => alert("Error: " + err));
+    }
+  </script>
+</body>
+</html>
