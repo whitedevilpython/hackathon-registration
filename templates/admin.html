@@ -135,6 +135,27 @@
       })
       .catch(err => alert("Error: " + err));
     }
+    function filterTable() {
+  let input = document.getElementById("searchBox").value.toLowerCase();
+  let rows = document.querySelectorAll("#participantsTable tbody tr");
+  let noResults = document.getElementById("noResults");
+  let found = false;
+
+  rows.forEach(row => {
+    if (row.id === "noResults") return; // skip the hidden row
+    let text = row.innerText.toLowerCase();
+    if (text.includes(input)) {
+      row.style.display = "";
+      found = true;
+    } else {
+      row.style.display = "none";
+    }
+  });
+
+  // Show "Participant not found" row when nothing matches
+  noResults.style.display = found ? "none" : "";
+}
+
   </script>
 </body>
 </html>
