@@ -1,20 +1,19 @@
-
 # -*- coding: utf-8 -*-
 from flask import Flask, render_template, request, jsonify
-import mysql.connector
+import psycopg2
 from flask_cors import CORS
-
 
 app = Flask(__name__)
 CORS(app)
 
 # ------------------ Database Connection ------------------
 def connect_db():
-    return mysql.connector.connect(
-        host="localhost",
-        user="root",             # change if needed
-        password="Prateek@068",  # <-- replace with your MySQL password
-        database="hackathon_db"
+    return psycopg2.connect(
+        host="dpg-d2r8med6ubrc73ec2t9g-a",       # e.g., "dpg-xyz.us-west-1.render.com"
+        port="5432",                # default PostgreSQL port
+        user="hackathon_user",        # PostgreSQL username
+        password="9Qhov8zxMDbXzvTLlm3FqjHf38Nqnnws",# PostgreSQL password
+        database="hackathon_db_zlb6"     # yourhackathon_db_zlb6 database name
     )
 
 # ------------------ Generate Unique ID ------------------
@@ -35,7 +34,6 @@ def generate_unique_id():
     conn.close()
 
     return "HACK{0:04d}".format(new_num)   # Example: HACK0001
-
 
 # ------------------ Routes ------------------
 @app.route("/")
@@ -71,7 +69,10 @@ def register():
 
         # Insert new participant
         cursor.execute(
-            "INSERT INTO participants (unique_id, name, email, phone, year, college) VALUES (%s, %s, %s, %s, %s, %s)",
+            """
+            INSERT INTO participants (unique_id, name, email, phone, year, college)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """,
             (unique_id, name, email, phone, year, college)
         )
         conn.commit()
