@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+print("MAIL_USERNAME:", os.getenv("MAIL_USERNAME"))
+print("MAIL_PASSWORD:", os.getenv("MAIL_PASSWORD"))
+
 from flask import Flask, render_template, request, jsonify, url_for
 import os
 import psycopg
@@ -13,8 +16,9 @@ CORS(app)
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
-app.config['Prateekporwal096@gmail.com'] = 'your_email@gmail.com'       # replace with your email
-app.config['alqugyzocnfielaq'] = 'your_app_password'          # use App Password if Gmail
+app.config['MAIL_USERNAME'] = os.getenv("MAIL_USERNAME")  # your email
+app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD")  # app password
+# use App Password if Gmail
 mail = Mail(app)
 
 # ------------------ Database Connection ------------------
