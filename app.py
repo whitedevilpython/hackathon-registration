@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from flask import Flask, render_template, request, jsonify
 import os
-import psycopg2
+import psycopg
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -9,7 +9,7 @@ CORS(app)
 
 # ------------------ Database Connection ------------------ .   .  9. 
 def connect_db():
-    return psycopg2.connect(
+    return psycopg.connect(
         host=os.getenv("dpg-d2r8med6ubrc73ec2t9g-a"),
         port=os.getenv("5432"),
         user=os.getenv("hackathon_user"),
